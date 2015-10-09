@@ -228,16 +228,16 @@ func (e *Engine) RefreshImages() error {
 
 // RefreshVolumes refreshes the list of volumes on the engine.
 func (e *Engine) RefreshVolumes() error {
-	volumes, err := e.client.ListVolumes()
-	if err != nil {
-		return err
-	}
-	e.Lock()
-	e.volumes = make(map[string]*Volume)
-	for _, volume := range volumes {
-		e.volumes[volume.Name] = &Volume{Volume: *volume, Engine: e}
-	}
-	e.Unlock()
+	// volumes, err := e.client.ListVolumes()
+	// if err != nil {
+	// 	return err
+	// }
+	// e.Lock()
+	// e.volumes = make(map[string]*Volume)
+	// for _, volume := range volumes {
+	// 	e.volumes[volume.Name] = &Volume{Volume: *volume, Engine: e}
+	// }
+	// e.Unlock()
 	return nil
 }
 
