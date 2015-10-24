@@ -23,7 +23,7 @@ You install Docker Swarm on a single system which is known as your Docker Swarm 
 * have Docker Engine 1.6.0+ installed
 * open a TCP port to listen for the manager
 
-You can run Docker Swarm on Linux 64-bit architectures. You can also install and run it on 64-bit Windows and Max OSX but these architectures are *not* regularly tested for compatibility in the BETA phase.
+You can run Docker Swarm on Linux 64-bit architectures. You can also install and run it on 64-bit Windows and Max OSX but these architectures are *not* regularly tested for compatibility.
 
 Take a moment and identify the systems on your network that you intend to use. Ensure each node meets the requirements listed above.
 
@@ -53,9 +53,12 @@ Docker daemon, monitors it, and updates the discovery backend with the node's st
 
 This example uses the Docker Hub based `token` discovery service. Log into **each node** and do the following.
 
-1. Start the Docker daemon with the `-H` flag. This ensures that the Docker remote API on *Swarm Agents* is available over TCP for the *Swarm Manager*.
+1. Start the Docker daemon with the `-H` flag. This ensures that the
+Docker remote API on *Swarm Agents* is available over TCP for the
+*Swarm Manager*, as well as the standard unix socket which is
+available in default docker installs.
 
-		$ docker daemon -H tcp://0.0.0.0:2375
+		$ docker daemon -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock
 
 	> **Note**: versions of docker prior to 1.8 used the `-d` flag instead of the `docker daemon` subcommand.
 

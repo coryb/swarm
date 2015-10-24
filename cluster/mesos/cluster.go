@@ -17,7 +17,6 @@ import (
 	"github.com/docker/swarm/cluster/mesos/queue"
 	"github.com/docker/swarm/scheduler"
 	"github.com/docker/swarm/scheduler/node"
-	"github.com/docker/swarm/scheduler/strategy"
 	"github.com/gogo/protobuf/proto"
 	"github.com/mesos/mesos-go/mesosproto"
 	mesosscheduler "github.com/mesos/mesos-go/scheduler"
@@ -178,7 +177,7 @@ func (c *Cluster) CreateContainer(config *cluster.ContainerConfig, name string) 
 		return nil, err
 	case <-time.After(c.taskCreationTimeout):
 		c.pendingTasks.Remove(task)
-		return nil, strategy.ErrNoResourcesAvailable
+		return nil, fmt.Errorf("container failed to start after %s", c.taskCreationTimeout)
 	}
 }
 
@@ -226,9 +225,19 @@ func (c *Cluster) RemoveImages(name string, force bool) ([]*dockerclient.ImageDe
 	return nil, errNotSupported
 }
 
+// CreateNetwork creates a network in the cluster
+func (c *Cluster) CreateNetwork(request *dockerclient.NetworkCreate) (*dockerclient.NetworkCreateResponse, error) {
+	return nil, errNotSupported
+}
+
 // CreateVolume creates a volume in the cluster
 func (c *Cluster) CreateVolume(request *dockerclient.VolumeCreateRequest) (*cluster.Volume, error) {
 	return nil, errNotSupported
+}
+
+// RemoveNetwork removes network from the cluster
+func (c *Cluster) RemoveNetwork(network *cluster.Network) error {
+	return errNotSupported
 }
 
 // RemoveVolumes removes volumes from the cluster
@@ -304,6 +313,11 @@ func (c *Cluster) RenameContainer(container *cluster.Container, newName string) 
 	container.Config.Labels[cluster.SwarmLabelNamespace+".mesos.name"] = newName
 
 	return nil
+}
+
+// Networks returns all the networks in the cluster.
+func (c *Cluster) Networks() cluster.Networks {
+	return cluster.Networks{}
 }
 
 // Volumes returns all the volumes in the cluster.
@@ -427,10 +441,11 @@ func (c *Cluster) scheduleTask(t *task) bool {
 	c.scheduler.Lock()
 	defer c.scheduler.Unlock()
 
-	n, err := c.scheduler.SelectNodeForContainer(c.listNodes(), t.config)
+	nodes, err := c.scheduler.SelectNodesForContainer(c.listNodes(), t.config)
 	if err != nil {
 		return false
 	}
+	n := nodes[0]
 	s, ok := c.slaves[n.ID]
 	if !ok {
 		t.error <- fmt.Errorf("Unable to create on slave %q", n.ID)
@@ -499,7 +514,9 @@ func (c *Cluster) scheduleTask(t *task) bool {
 	if data != nil && json.Unmarshal(data, &inspect) == nil && len(inspect) == 1 {
 		container := &cluster.Container{Container: dockerclient.Container{Id: inspect[0].Id}, Engine: s.engine}
 		if container, err := container.Refresh(); err == nil {
-			t.container <- container
+			if !t.done {
+				t.container <- container
+			}
 			return true
 		}
 	}
@@ -512,12 +529,16 @@ func (c *Cluster) scheduleTask(t *task) bool {
 
 	for _, container := range s.engine.Containers() {
 		if container.Config.Labels[cluster.SwarmLabelNamespace+".mesos.task"] == taskID {
-			t.container <- container
+			if !t.done {
+				t.container <- container
+			}
 			return true
 		}
 	}
 
-	t.error <- fmt.Errorf("Container failed to create")
+	if !t.done {
+		t.error <- fmt.Errorf("Container failed to create")
+	}
 	return true
 }
 
@@ -526,14 +547,12 @@ func (c *Cluster) RANDOMENGINE() (*cluster.Engine, error) {
 	c.RLock()
 	defer c.RUnlock()
 
-	n, err := c.scheduler.SelectNodeForContainer(c.listNodes(), &cluster.ContainerConfig{})
+	nodes, err := c.scheduler.SelectNodesForContainer(c.listNodes(), &cluster.ContainerConfig{})
 	if err != nil {
 		return nil, err
 	}
-	if n != nil {
-		return c.slaves[n.ID].engine, nil
-	}
-	return nil, nil
+	n := nodes[0]
+	return c.slaves[n.ID].engine, nil
 }
 
 // BuildImage build an image
@@ -545,11 +564,12 @@ func (c *Cluster) BuildImage(buildImage *dockerclient.BuildImage, out io.Writer)
 		CpuShares: buildImage.CpuShares,
 		Memory:    buildImage.Memory,
 	}}
-	n, err := c.scheduler.SelectNodeForContainer(c.listNodes(), config)
+	nodes, err := c.scheduler.SelectNodesForContainer(c.listNodes(), config)
 	c.scheduler.Unlock()
 	if err != nil {
 		return err
 	}
+	n := nodes[0]
 
 	reader, err := c.slaves[n.ID].engine.BuildImage(buildImage)
 	if err != nil {

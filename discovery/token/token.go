@@ -12,8 +12,7 @@ import (
 	"github.com/docker/swarm/discovery"
 )
 
-// DiscoveryUrl is exported
-const DiscoveryURL = "https://discovery.hub.docker.com/v1"
+const discoveryURL = "https://discovery.hub.docker.com/v1"
 
 // Discovery is exported
 type Discovery struct {
@@ -33,12 +32,12 @@ func Init() {
 }
 
 // Initialize is exported
-func (s *Discovery) Initialize(urltoken string, heartbeat time.Duration, ttl time.Duration) error {
+func (s *Discovery) Initialize(urltoken string, heartbeat time.Duration, ttl time.Duration, _ map[string]string) error {
 	if i := strings.LastIndex(urltoken, "/"); i != -1 {
 		s.url = "https://" + urltoken[:i]
 		s.token = urltoken[i+1:]
 	} else {
-		s.url = DiscoveryURL
+		s.url = discoveryURL
 		s.token = urltoken
 	}
 

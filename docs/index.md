@@ -28,9 +28,6 @@ principle. As initial development settles, an API will develop to enable
 pluggable backends.  This means you can swap out the scheduling backend
 Docker Swarm uses out-of-the-box with a backend you prefer. Swarm's swappable design provides a smooth out-of-box experience for most use cases, and allows large-scale production deployments to swap for more powerful backends, like Mesos.
 
-> **Note**: Swarm is currently in BETA, so things are likely to change. We
-> don't recommend you use it in production yet.
-
 ## Understand swarm creation
 
 The first step to creating a swarm on your network is to pull the Docker Swarm image. Then, using Docker, you configure the swarm manager and all the nodes to run Docker Swarm. This method requires that you:
@@ -54,12 +51,12 @@ To dynamically configure and manage the services in your containers, you use a d
 ## Advanced Scheduling
 
 To learn more about advanced scheduling, see the
-[strategies](/scheduler/strategy) and [filters](/scheduler/filter.md)
+[strategies](scheduler/strategy.md) and [filters](scheduler/filter.md)
 documents.
 
 ## Swarm API
 
-The [Docker Swarm API](/api/swarm-api.md) is compatible with
+The [Docker Swarm API](api/swarm-api.md) is compatible with
 the [Docker remote
 API](http://docs.docker.com/reference/api/docker_remote_api/), and extends it
 with some new endpoints.

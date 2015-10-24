@@ -41,6 +41,12 @@ function teardown() {
 			 --device=/dev/loop0:/dev/loop0 \
 			 --ipc=host \
 			 --pid=host \
+			 --memory-swappiness=2 \
+			 --group-add="root" \
+			 --memory-reservation=100 \
+			 --kernel-memory=100 \
+			 --dns-opt="someDnsOption" \
+			 --stop-signal="SIGKILL" \
 			 busybox sleep 1000
 
 	# verify, container is running
@@ -65,6 +71,18 @@ function teardown() {
 	[[ "${output}" == *"\"IpcMode\": \"host\""* ]]
 	# pid
 	[[ "${output}" == *"\"PidMode\": \"host\""* ]]
+	# memory-swappiness
+	[[ "${output}" == *"\"MemorySwappiness\": 2"* ]]
+	# group-add
+	[[ "${output}" == *"root"* ]]
+	# memory-reservation
+	[[ "${output}" == *"\"MemoryReservation\": 100"* ]]
+	# kernel-memory
+	[[ "${output}" == *"\"KernelMemory\": 100"* ]]
+	# dns-opt
+	[[ "${output}" == *"someDnsOption"* ]]
+	# stop-signal
+	[[ "${output}" == *"\"StopSignal\": \"SIGKILL\""* ]]
 }
 
 @test "docker run - reschedule with soft-image-affinity" {
@@ -87,4 +105,26 @@ function teardown() {
 	# check container running on node-0
 	run docker_swarm ps
 	[[ "${output}" == *"node-0/test_container"* ]]
+}
+
+@test "docker run - reschedule with soft-image-affinity(have node constraint))" {
+	start_docker_with_busybox 1
+	start_docker 1
+
+	docker -H ${HOSTS[0]} tag busybox:latest busyboxabcde:latest
+	swarm_manage
+
+	# make sure busyboxabcde exists
+	run docker_swarm images
+	[ "$status" -eq 0 ]
+	[[ "${output}" == *"busyboxabcde"* ]]
+
+	# create container on node-1, node-1 does not have busyboxabcde and will pull it
+	# but can not find busyboxabcde in dockerhub
+	# because run with node constraint, will not retry with soft-image-affinity
+	run docker_swarm run -d --name test_container -e constraint:node==node-1 busyboxabcde sleep 1000
+
+	# check error message
+	[[ "${output}" != *"unable to find a node that satisfies"* ]]
+	[[ "${output}" == *"busyboxabcde:latest not found"* ]]
 }
